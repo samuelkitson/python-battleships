@@ -6,5 +6,5 @@
 
 #Initialise the variables
 def init():
-    global app
-    app = None
+    global window
+    window = None
