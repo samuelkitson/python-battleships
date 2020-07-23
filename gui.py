@@ -6,23 +6,29 @@
 
 # Import libraries
 import variables
-try:
-    import Tkinter as tk
-    from Tkinter import N, E, S, W, NE, SE, SW, NW, END
-except:
-    import tkinter as tk
-    from tkinter import N, E, S, W, NE, SE, SW, NW, END
+import tkinter as tk
+from tkinter import ttk
+from tkinter import N, E, S, W, NE, SE, SW, NW, END
 
 
 
 #
-# The Window class provides the overall GUI window
+# The Window class provides the overall GUI window and extends the tk.Tk() class
+# Closing this window will quit the application
 #
-class Window:
+class Window(tk.Tk):
     #Construct the window
     def __init__(self):
-        self.window = tk.Tk()
-        self.window.title("Battleships")
+        #self.window = tk.Tk()
+        super().__init__()
+        self.title("Battleships")
+        self.geometry("400x350")
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(2, weight=1)
+        self.columnconfigure(2, weight=1)
+        self.contents = tk.Frame(self)
+        self.contents.grid(row=1, column=1)
 
     def close(self):
         self.window.destroy()
@@ -64,15 +70,14 @@ class PopupWindow(tk.Toplevel):
 class Tutorial(PopupWindow):
     # Construct the GUI
     def __init__(self):
+        # Init the PopupWindow superclass
         super().__init__()
-
-        #self.resizable(True, True)
-        #self.contents.config(bg="salmon")
         
+        # Create the GUI
         self.title = tk.Label(self.contents, text="Tutorial", fg=variables.title_colour, font=variables.title_font)
-        self.title.grid(row=0, column=0, pady=(0,10), columnspan=2)
+        self.title.grid(row=0, column=0, pady=(0,10), columnspan=3)
         self.text = tk.Text(self.contents, wrap=tk.WORD)
-        self.text.grid(row=1, column=0, columnspan=2)
+        self.text.grid(row=1, column=0, columnspan=3)
         self.text.config(bg="white", height=13, width=35, state="disabled")
 
         # Set up tags for custom text styles
@@ -81,16 +86,16 @@ class Tutorial(PopupWindow):
 
         self.write_text("Load tutorial, please wait...", ("bold"))
 
-        self.left_button = tk.Button(self.contents, text="◀ Previous page", command=self.previous_page)
-        self.left_button.config(width=14)
-        self.left_button.grid(row=2, column=0, pady=(5,10))
+        self.left_button = ttk.Button(self.contents, text="◀ Previous", command=self.previous_page)
+        self.left_button.config(width=10)
+        self.left_button.grid(row=2, column=0, pady=(5,10), sticky="w")
 
-        self.right_button = tk.Button(self.contents, text="Next page ▶", command=self.next_page)
-        self.right_button.config(width=14)
-        self.right_button.grid(row=2, column=1, pady=(5,10))
+        self.right_button = ttk.Button(self.contents, text="Next ▶", command=self.next_page)
+        self.right_button.config(width=10)
+        self.right_button.grid(row=2, column=2, pady=(5,10), sticky="e")
 
-        self.exit_button = tk.Button(self.contents, text="Back to the game", command=self.close)
-        self.exit_button.grid(row=3, column=0, columnspan=2)
+        self.exit_button = ttk.Button(self.contents, text="Back to the game", command=self.close)
+        self.exit_button.grid(row=2, column=1, pady=(5,10))
         
         self.load_tutorial_file()
 
@@ -139,7 +144,34 @@ class Tutorial(PopupWindow):
         del self
 
 
-class Game_Setup:
+#
+# The GameSetup class provides the window shown to players at the start of the game
+#
+class GameSetup:
+    # Construct the GUI
+    def __init__(self, show_tutorial_callback):
+        # Set up the Frame instance for this window
+        self.contents = tk.Frame(variables.window.contents)
+        self.contents.grid()
+
+        # Record callbacks
+        self.show_tutorial_callback = show_tutorial_callback
+
+        # Create the GUI
+        self.title = tk.Label(self.contents, text="Battleships", fg=variables.title_colour, font=variables.title_font)
+        self.title.grid(row=0, column=0, columnspan=2)
+
+        self.subtitle = tk.Label(self.contents, text="Python Edition", fg=variables.subtitle_colour, font=variables.subtitle_font)
+        self.subtitle.grid(row=1, column=0, pady=(0,10), columnspan=2)
+
+        self.options_frame = tk.LabelFrame(self.contents, text="Game options")
+        self.options_frame.grid(row=2, column=0, columnspan=2)
+
+        self.tutorial_button = ttk.Button(self.options_frame, text="Tutorial", command=self.show_tutorial_callback)
+        self.tutorial_button.grid(row=0, column=0)
+
+
+"""class Game_Setup:
     #Construct the GUI
     def __init__(self, show_tutorial_callback, close_tutorial_callback):
         #Assign local variables
@@ -156,7 +188,7 @@ class Game_Setup:
         self.close_tutorial_callback = close_tutorial_callback
 
         #Create canvas & window
-        self.canvas = tk.Canvas(variables.window.window, bg=self.colour, height=self.height, width=self.width)
+        self.canvas = tk.Canvas(variables.window, bg=self.colour, height=self.height, width=self.width)
         self.canvas.grid()
 
         label = tk.Label(self.canvas, text="Music Quiz Game", font=self.fontTitle, bg=self.colour)
@@ -312,4 +344,4 @@ class Game_Setup:
     #Closes the authenticator window
     def Close(self):
         self.canvas.destroy()
-        del self
+        del self"""
