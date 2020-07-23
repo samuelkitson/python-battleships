@@ -7,10 +7,49 @@
 # Import libraries
 import variables
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from tkinter import N, E, S, W, NE, SE, SW, NW, END
+from PIL import Image, ImageTk
 
 
+# Uses columnconfigure to set all columns to the same width in a provided grid
+def set_equal_columns(grid, start_col=0, end_col=None):
+    # If no end has been provided, default to all columns
+    if (end_col == None):
+        end_col = grid.grid_size()[0]
+    else:
+        end_col += 1
+    for column_num in range(start_col, end_col):
+        grid.columnconfigure(column_num, weight=1)
+
+
+# Uses rowconfigure to set all rows to the same width in a provided grid
+def set_equal_rows(grid, start_row=0, end_row=None):
+    # If no end has been provided, default to all rows
+    if (end_row == None):
+        end_row = grid.grid_size()[0]
+    else:
+        end_row += 1
+    for row_num in range(start_row, end_row):
+        grid.rowconfigure(row_num, weight=1)
+
+
+#Resize a PhotoImage using PIL
+def resize_PhotoImage(path, width, height):
+    #https://stackoverflow.com/a/52329796/8827535
+    img = Image.open(path)
+    img = img.resize((width, height), Image.ANTIALIAS)
+    return ImageTk.PhotoImage(img)
+
+
+# Close all windows and quit the game
+def quit_game(confirm=True):
+    if confirm:
+        confirm_answer = messagebox.askokcancel("Quit game", "Are you sure you want to quit the game? Your progress will be lost")
+        if not confirm_answer:
+            return False
+    variables.window.close()
+    
 
 #
 # The Window class provides the overall GUI window and extends the tk.Tk() class
@@ -23,15 +62,35 @@ class Window(tk.Tk):
         super().__init__()
         self.title("Battleships")
         self.geometry("400x350")
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(2, weight=1)
-        self.columnconfigure(2, weight=1)
+        self.resizable(False, False)
         self.contents = tk.Frame(self)
-        self.contents.grid(row=1, column=1)
+        #self.contents.grid(row=1, column=1)
+        self.contents.pack(fill=tk.BOTH, expand=1)
+        
+        # Catch the window close event and show a confirmation dialog
+        self.protocol("WM_DELETE_WINDOW", quit_game)
+
+    # Enables full screen mode
+    # F11 to toggle, ESC to exit
+    def full_screen(self):
+        self.bind("<F11>", lambda event: self.attributes("-fullscreen", not self.attributes("-fullscreen")))
+        self.bind("<Escape>", lambda event: self.attributes("-fullscreen", False))
+        self.bind("<F10>", lambda event:self.exit_full_screen())
+        self.attributes("-fullscreen", True)
+
+    # Disables key binding and exits full screen
+    def exit_full_screen(self):
+        self.unbind("<F11>")
+        self.unbind("<Escape>")
+        self.attributes("-fullscreen", False)
+
+    # Destroys all child widgets within the contents Frame
+    def clear_frame(self):
+        for widget in self.contents.winfo_children():
+            widget.destroy()
 
     def close(self):
-        self.window.destroy()
+        self.destroy()
 
 
 #
@@ -149,199 +208,119 @@ class Tutorial(PopupWindow):
 #
 class GameSetup:
     # Construct the GUI
-    def __init__(self, show_tutorial_callback):
+    def __init__(self, show_tutorial_callback, start_game_callback):
         # Set up the Frame instance for this window
         self.contents = tk.Frame(variables.window.contents)
-        self.contents.grid()
+        self.contents.pack(fill=tk.BOTH, expand=1)
+        set_equal_columns(self.contents, 0, 1)
+        variables.window.geometry("400x350")
 
         # Record callbacks
         self.show_tutorial_callback = show_tutorial_callback
+        self.start_game_callback = start_game_callback
 
         # Create the GUI
         self.title = tk.Label(self.contents, text="Battleships", fg=variables.title_colour, font=variables.title_font)
-        self.title.grid(row=0, column=0, columnspan=2)
+        self.title.grid(row=0, column=0, columnspan=2, pady=(10,0))
 
         self.subtitle = tk.Label(self.contents, text="Python Edition", fg=variables.subtitle_colour, font=variables.subtitle_font)
-        self.subtitle.grid(row=1, column=0, pady=(0,10), columnspan=2)
+        self.subtitle.grid(row=1, column=0, columnspan=2)
 
         self.options_frame = tk.LabelFrame(self.contents, text="Game options")
-        self.options_frame.grid(row=2, column=0, columnspan=2)
+        self.options_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=(10,20))
 
-        self.tutorial_button = ttk.Button(self.options_frame, text="Tutorial", command=self.show_tutorial_callback)
-        self.tutorial_button.grid(row=0, column=0)
+        self.player_number_value = tk.IntVar()
+        self.player_number_value.set(1)
+        self.single_player_radio = ttk.Radiobutton(self.options_frame, text="Single player", variable=self.player_number_value, value=1, command=lambda: self.enable_difficulty(True))
+        self.single_player_radio.grid(row=0, column=0, sticky="w", padx=5)
+        self.two_player_radio = ttk.Radiobutton(self.options_frame, text="Two players", variable=self.player_number_value, value=2, command=lambda: self.enable_difficulty(False))
+        self.two_player_radio.grid(row=1, column=0, sticky="w", padx=5)
+
+        self.difficulty_label = tk.Label(self.options_frame, text="Game difficulty:")
+        self.difficulty_label.grid(row=0, column=1, sticky="w", padx=(5, 0))
+
+        self.game_difficulty = tk.StringVar()
+        self.game_difficulty.set(variables.difficulty_levels[0]) # default value
+        self.game_difficulty_select = ttk.OptionMenu(self.options_frame, self.game_difficulty, variables.difficulty_levels[0], *variables.difficulty_levels)
+        self.game_difficulty_select.config(width=8)
+        self.game_difficulty_select.grid(row=1, column=1, sticky="w")
+
+        self.resize_button = ttk.Button(self.contents, text="Start game", command=self.start_game_callback)
+        self.resize_button.grid(row=3, column=0)
+
+        self.tutorial_button = ttk.Button(self.contents, text="Tutorial", command=self.show_tutorial_callback)
+        self.tutorial_button.grid(row=3, column=1)
+
+        self.close_button = ttk.Button(self.contents, text="Quit", command=quit_game)
+        self.close_button.grid(row=4, column=0)
+
+        # Set the columns to equal width
+        set_equal_columns(self.options_frame)
 
 
-"""class Game_Setup:
-    #Construct the GUI
-    def __init__(self, show_tutorial_callback, close_tutorial_callback):
-        #Assign local variables
-        self.width = 500
-        self.height = 500
-        self.colour = "floral white"
-        self.fontTitle = ("verdana", 20)
-        self.font = ("verdana", 13)
-        self.label = ("verdana", 8)
+    # Enables or disables the difficulty selector
+    def enable_difficulty(self, enabled):
+        if enabled:
+            mode = "normal"
+        else:
+            mode = "disabled"
+        self.difficulty_label.config(state=mode)
+        self.game_difficulty_select.config(state=mode)
 
-        self.loginCallback = lambda: print("Login:")
-        self.registerCallback = lambda: print("Register user")
-        self.show_tutorial_callback = show_tutorial_callback
-        self.close_tutorial_callback = close_tutorial_callback
 
-        #Create canvas & window
-        self.canvas = tk.Canvas(variables.window, bg=self.colour, height=self.height, width=self.width)
-        self.canvas.grid()
+    # Closes the window
+    def close(self):
+        self.contents.destroy()
+        del self
 
-        label = tk.Label(self.canvas, text="Music Quiz Game", font=self.fontTitle, bg=self.colour)
-        label.grid(row=1, columnspan=2)
-        label = tk.Label(self.canvas, text="Welcome to the music quiz!", font=self.font, bg=self.colour)
-        label.grid(row=2, columnspan=2)
-        
-        self.statusLabel = tk.Label(self.canvas, text="Please authenticate to continue", font=self.label, bg=self.colour, width=40)
-        self.statusLabel.grid(row=3, columnspan=2)
 
-        line = tk.Frame(self.canvas, height=1, width=200, bg="grey")
-        line.grid(row=4, columnspan=2, pady=10)
+#
+# The ShipPlacement class allows the player(s) to place their ships
+#
+class ShipPlacement:
+    # Construct the GUI
+    def __init__(self, next_screen_callback):
+        # Set up the Frame instance for this window
+        self.contents = tk.Frame(variables.window.contents)
+        self.contents.pack(fill=tk.BOTH, expand=1)
+        variables.window.geometry("800x600")
+        #variables.window.full_screen()
+        variables.window.resizable(True, True) # TEMPORARY
 
-        self.loginFrame = tk.Frame(self.canvas, bg=self.colour)
-        self.loginFrame.grid(row=5, columnspan=2)
+        # Record callbacks
+        self.next_screen_callback = next_screen_callback
 
-        self.SetUpLogin()
-        
-    #Called when the login button is pressed on the login screen - attempts login
-    def Login_LoginButtonPressed(self):
-        self.loginCallback(self.username.get(), self.password.get())
+        # Create the GUI
+        self.title = tk.Label(self.contents, text="Ship Placement", fg=variables.title_colour, font=variables.title_font)
+        self.title.grid(row=0, column=0, columnspan=2, pady=(10,0))
 
-    #Called when the register button is pressed on the register screen - sets up the registration window
-    def Login_RegisterButtonPressed(self):
-        self.SetUpRegister()
+        self.subtitle = tk.Label(self.contents, text="You need to place 5 ships", fg=variables.subtitle_colour, font=variables.subtitle_font)
+        self.subtitle.grid(row=1, column=0, columnspan=2)
 
-    #Called if the password entered was invalid - notifies the user
-    def InvalidPassword(self):
-        self.username.set("")
-        self.password.set("")
+        self.close_button = ttk.Button(self.contents, text="Quit", command=quit_game)
+        self.close_button.grid(row=3, column=1, sticky="w")
 
-        self.statusLabel.config(text="Invalid credentials - please try again")
-        self.statusLabel.config(fg="red")
+        self.grid_frame = tk.Frame(self.contents)
+        self.grid_frame.grid(row=3, column=0, padx=20, pady=20)
+        self.grid_frame.config(bg="black")
 
-    #Called if the account was not authorised - notifies the user
-    def AccountNotAuthorised(self):
-        self.password.set("")
+        self.no_entry_image = resize_PhotoImage(r"images\noentry.png", variables.grid_image_width, variables.grid_image_height)
+        self.pixel_image = tk.PhotoImage(width=1, height=1)
 
-        self.statusLabel.config(text="Your account has not been authorised")
-        self.statusLabel.config(fg="red")
+        self.buttons_array = []
+        for row_num in range(0, variables.rows_number):
+            self.buttons_array.append([None]*variables.columns_number)
+            for col_num in range(0, variables.columns_number):
+                # Create a button widget (note: this uses the original tkinter button, not the new ttk button)
+                self.buttons_array[row_num][col_num] = tk.Button(self.grid_frame, image=self.pixel_image, height=variables.grid_image_height, width=variables.grid_image_width, text="X")
+                # Set the onclick handler
+                self.buttons_array[row_num][col_num]['command'] = lambda row=row_num, col=col_num: self.button_click_handler(row, col)
+                # Position the button
+                self.buttons_array[row_num][col_num].grid(row=row_num, column=col_num)
 
-    #Sets up the login window
-    def SetUpLogin(self):
-        self.ClearLoginFrame()
+        set_equal_columns(self.contents)
 
-        self.statusLabel.config(text="Please authenticate to continue")
-        self.statusLabel.config(fg="black")
-
-        self.username = tk.StringVar()
-        self.password = tk.StringVar()
-
-        label = tk.Label(self.loginFrame, text="Username", font=self.label, bg=self.colour)
-        self.fieldUsername = tk.Entry(self.loginFrame, textvariable=self.username)
-        self.fieldUsername.focus()
-
-        label.grid(row=1, column=0, sticky=E)
-        self.fieldUsername.grid(row=1, column=1, sticky=W)
-
-        label = tk.Label(self.loginFrame, text="Password", font=self.label, bg=self.colour)
-        self.fieldPassword = tk.Entry(self.loginFrame, textvariable=self.password, show="*")
-
-        label.grid(row=2, column=0, sticky=E)
-        self.fieldPassword.grid(row=2, column=1, sticky=W)
-
-        buttonFrame = tk.Frame(self.loginFrame, bg=self.colour)
-        buttonFrame.grid(row=3, columnspan=2, pady=5)
-
-        
-        self.loginButton = tk.Button(buttonFrame, text="Login", command=self.close_tutorial_callback)
-        self.registerButton = tk.Button(buttonFrame, text="Register", command=self.show_tutorial_callback)
-
-        self.loginButton.grid(row=0, column=0)
-        self.registerButton.grid(row=0, column=1)
-
-    #Called when the login button is pressed in the register window
-    def Register_LoginButtonPressed(self):
-        self.SetUpLogin()
-
-    #Called when the register button is pressed in the register window
-    def Register_RegisterButtonPressed(self):
-        self.registerCallback(self.username.get(), self.password.get(), self.password2.get())
-
-    #Sets up the registration window
-    def SetUpRegister(self):
-        self.ClearLoginFrame()
-
-        self.statusLabel.config(text="Register an account")
-        self.statusLabel.config(fg="black")
-
-        self.username = tk.StringVar()
-        self.password = tk.StringVar()
-        self.password2 = tk.StringVar()
-
-        label = tk.Label(self.loginFrame, text="Username", font=self.label, bg=self.colour)
-        self.fieldUsername = tk.Entry(self.loginFrame, textvariable=self.username)
-        self.fieldUsername.focus()
-
-        label.grid(row=1, column=0, sticky=E)
-        self.fieldUsername.grid(row=1, column=1, sticky=W)
-
-        label = tk.Label(self.loginFrame, text="Password", font=self.label, bg=self.colour)
-        self.fieldPassword = tk.Entry(self.loginFrame, textvariable=self.password, show="*")
-
-        label.grid(row=2, column=0, sticky=E)
-        self.fieldPassword.grid(row=2, column=1, sticky=W)
-
-        label = tk.Label(self.loginFrame, text="Confirm Password", font=self.label, bg=self.colour)
-        self.fieldPassword2 = tk.Entry(self.loginFrame, textvariable=self.password2, show="*")
-
-        label.grid(row=3, column=0, sticky=E)
-        self.fieldPassword2.grid(row=3, column=1, sticky=W)
-
-        buttonFrame = tk.Frame(self.loginFrame, bg=self.colour)
-        buttonFrame.grid(row=4, columnspan=2, pady=5)
-
-        
-        self.registerButton = tk.Button(buttonFrame, text="Register", command=self.Register_RegisterButtonPressed)
-        self.loginButton = tk.Button(buttonFrame, text="Login", command=self.Register_LoginButtonPressed)
-
-        self.registerButton.grid(row=0, column=0)
-        self.loginButton.grid(row=0, column=1)
-
-    #Called if there were errors in the registration data - notifies the user
-    def InvalidRegistration(self, message):
-        self.password.set("")
-        self.password2.set("")
-
-        self.statusLabel.config(text=message)
-        self.statusLabel.config(fg="red")
-
-    #Sets up the registration confirmation window
-    def SetUpRegisterConfirm(self):
-        self.ClearLoginFrame()
-        
-        self.statusLabel.config(text="Registration successful")
-        self.statusLabel.config(fg="black")
-
-        label = tk.Label(self.loginFrame, text="Please wait for your account to be validated", font=self.label, bg=self.colour)
-        label.grid(row=0, column=0, sticky=E)
-
-        buttonFrame = tk.Frame(self.loginFrame, bg=self.colour)
-        buttonFrame.grid(row=4, columnspan=2, pady=5)
-
-        self.loginButton = tk.Button(buttonFrame, text="Login", command=self.Register_LoginButtonPressed)
-        self.loginButton.grid(row=1, column=1, columnspan=2)
-
-    #Clears the login frame
-    def ClearLoginFrame(self):
-        children = self.loginFrame.winfo_children()
-        for child in children:
-            child.destroy()
-
-    #Closes the authenticator window
-    def Close(self):
-        self.canvas.destroy()
-        del self"""
+    # Handler for any button presses from the grid
+    def button_click_handler(self, row, col):
+        print("Clicked: Row "+str(row+1)+" Column "+str(col+1)) 
+        self.buttons_array[row][col].config(image=self.no_entry_image, text="")

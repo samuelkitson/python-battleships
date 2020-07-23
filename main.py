@@ -9,20 +9,16 @@
 # pyinstaller -w -F -y main.py
 #
 # ******************************************************
-
+ 
 # Import libraries
-import gui, variables
+import gui, variables, game
 import time
-
-def show_tutorial():
-    variables.tutorial_window = gui.Tutorial()
 
 # Called to start the game
 def start_program():
     # Create the base window that will host the game
     variables.window = gui.Window()
-    variables.game_setup_window = gui.GameSetup(show_tutorial)
-
+    variables.game = game.Game()
 
 if __name__ == "__main__":
     # Start the game
