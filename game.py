@@ -18,6 +18,7 @@ class Game():
     # New game
     def __init__(self):
         self.init_variables()
+        self.init_ships_available()
         self.show_game_setup()
     
     # Displays the game setup window, shown at the start of the game
@@ -36,6 +37,15 @@ class Game():
     def init_variables(self):
         variables.grid_player1 = create_game_grid(variables.rows_number, variables.columns_number)
         variables.grid_player2 = create_game_grid(variables.rows_number, variables.columns_number)
+
+    # Populate variables.ships_available
+    def init_ships_available(self):
+        # Edit this to change ships
+        variables.ships_available.append(Ship("Carrier", 5))
+        variables.ships_available.append(Ship("Battleship", 4))
+        variables.ships_available.append(Ship("Destroyer", 3))
+        variables.ships_available.append(Ship("Submarine", 3))
+        variables.ships_available.append(Ship("Patrol Boat", 2))
 
 
 #

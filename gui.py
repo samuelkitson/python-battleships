@@ -10,7 +10,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import N, E, S, W, NE, SE, SW, NW, END
 from PIL import Image, ImageTk
+import re
 
+import time
 
 # Uses columnconfigure to set all columns to the same width in a provided grid
 def set_equal_columns(grid, start_col=0, end_col=None):
@@ -34,11 +36,66 @@ def set_equal_rows(grid, start_row=0, end_row=None):
         grid.rowconfigure(row_num, weight=1)
 
 
-#Resize a PhotoImage using PIL
-def resize_PhotoImage(path, width, height):
+# Load all required image files into Image instances
+def load_all_images():
+    # Load image files into the Image class
+    for path in variables.images_to_load:
+        image = Image.open(path)
+        # Extract just the file name
+        name = path.split("/")[-1]
+        variables.loaded_images[name] = image
+
+# Naming convention for boat images:
+# boat_type_colour_rotation
+# type options:
+#   e: end
+#   m: middle
+# colour options:
+#   g: grey (standard)
+#   y: yellow (selected)
+#   e: green (placed successfully)
+# rotation options:
+#   u, r, d, l: up, right, down left
+#   h, v: horizontal, vertical
+
+# Resize and rotate images from variables.load_images, creating PhotoImages for use in the grid
+def create_edited_PhotoImages():
+    height = variables.grid_image_height
+    width = variables.grid_image_width
+    # Boat End Grey Up
+    variables.photo_images["boat_e_g_u"] = resize_Image(variables.loaded_images["boat_end_grey.png"], width, height, 90)
+    variables.photo_images["boat_e_g_r"] = resize_Image(variables.loaded_images["boat_end_grey.png"], width, height)
+    variables.photo_images["boat_e_g_d"] = resize_Image(variables.loaded_images["boat_end_grey.png"], width, height, 270)
+    variables.photo_images["boat_e_g_l"] = resize_Image(variables.loaded_images["boat_end_grey.png"], width, height, 180)
+    # Boat Middle Grey Horizontal
+    variables.photo_images["boat_m_g_h"] = resize_Image(variables.loaded_images["boat_middle_grey.png"], width, height)
+    variables.photo_images["boat_m_g_v"] = resize_Image(variables.loaded_images["boat_middle_grey.png"], width, height, 90)
+    
+    # Boat End Yellow Up
+    variables.photo_images["boat_e_y_u"] = resize_Image(variables.loaded_images["boat_end_yellow.png"], width, height, 90)
+    variables.photo_images["boat_e_y_r"] = resize_Image(variables.loaded_images["boat_end_yellow.png"], width, height)
+    variables.photo_images["boat_e_y_d"] = resize_Image(variables.loaded_images["boat_end_yellow.png"], width, height, 270)
+    variables.photo_images["boat_e_y_l"] = resize_Image(variables.loaded_images["boat_end_yellow.png"], width, height, 180)
+    # Boat Middle Yellow Horizontal
+    variables.photo_images["boat_m_y_h"] = resize_Image(variables.loaded_images["boat_middle_yellow.png"], width, height)
+    variables.photo_images["boat_m_y_v"] = resize_Image(variables.loaded_images["boat_middle_yellow.png"], width, height, 90)
+
+    # Boat End Green Up
+    variables.photo_images["boat_e_e_u"] = resize_Image(variables.loaded_images["boat_end_green.png"], width, height, 90)
+    variables.photo_images["boat_e_e_r"] = resize_Image(variables.loaded_images["boat_end_green.png"], width, height)
+    variables.photo_images["boat_e_e_d"] = resize_Image(variables.loaded_images["boat_end_green.png"], width, height, 270)
+    variables.photo_images["boat_e_e_l"] = resize_Image(variables.loaded_images["boat_end_green.png"], width, height, 180)
+    # Boat Middle Green Horizontal
+    variables.photo_images["boat_m_e_h"] = resize_Image(variables.loaded_images["boat_middle_green.png"], width, height)
+    variables.photo_images["boat_m_e_v"] = resize_Image(variables.loaded_images["boat_middle_green.png"], width, height, 90)
+
+#Resize an Image using PIL
+def resize_Image(img, width, height, rotation=0):
     #https://stackoverflow.com/a/52329796/8827535
-    img = Image.open(path)
+    #img = Image.open(path)
     img = img.resize((width, height), Image.ANTIALIAS)
+    if not rotation == 0:
+        img = img.rotate(rotation)
     return ImageTk.PhotoImage(img)
 
 
@@ -49,10 +106,24 @@ def quit_game(confirm=True):
         if not confirm_answer:
             return False
     variables.window.close()
+
+
+#
+# Custom buttons used to create the grid, extends the tk.Button class
+#
+class GridButton(tk.Button):
+    def __init__(self, master):
+        # Init the tk.Button superclass
+        super().__init__(master)
+        # Single pixel image used to set the button size in pixels
+        self.pixel_image = tk.PhotoImage(width=1, height=1)
+        # Configure the button using the tk.Button methods
+        self.config(image=self.pixel_image, height=variables.grid_image_height, width=variables.grid_image_width, relief="ridge", bg="white")
+
     
 
 #
-# The Window class provides the overall GUI window and extends the tk.Tk() class
+# The Window class provides the overall GUI window and extends the tk.Tk class
 # Closing this window will quit the application
 #
 class Window(tk.Tk):
@@ -69,6 +140,10 @@ class Window(tk.Tk):
         
         # Catch the window close event and show a confirmation dialog
         self.protocol("WM_DELETE_WINDOW", quit_game)
+
+        # Load and create images
+        load_all_images()
+        create_edited_PhotoImages()
 
     # Enables full screen mode
     # F11 to toggle, ESC to exit
@@ -283,7 +358,7 @@ class ShipPlacement:
         # Set up the Frame instance for this window
         self.contents = tk.Frame(variables.window.contents)
         self.contents.pack(fill=tk.BOTH, expand=1)
-        variables.window.geometry("800x600")
+        variables.window.geometry("1000x600")
         #variables.window.full_screen()
         variables.window.resizable(True, True) # TEMPORARY
 
@@ -292,35 +367,96 @@ class ShipPlacement:
 
         # Create the GUI
         self.title = tk.Label(self.contents, text="Ship Placement", fg=variables.title_colour, font=variables.title_font)
-        self.title.grid(row=0, column=0, columnspan=2, pady=(10,0))
+        self.title.grid(row=0, column=0, columnspan=3, pady=(10,0))
 
         self.subtitle = tk.Label(self.contents, text="You need to place 5 ships", fg=variables.subtitle_colour, font=variables.subtitle_font)
-        self.subtitle.grid(row=1, column=0, columnspan=2)
+        self.subtitle.grid(row=1, column=0, columnspan=3, pady=(0,20))
 
-        self.close_button = ttk.Button(self.contents, text="Quit", command=quit_game)
-        self.close_button.grid(row=3, column=1, sticky="w")
+        #self.close_button = ttk.Button(self.contents, text="Quit", command=quit_game)
+        #self.close_button.grid(row=3, column=1, sticky="w")
 
+        # START GRID CONSTRUCTION
         self.grid_frame = tk.Frame(self.contents)
-        self.grid_frame.grid(row=3, column=0, padx=20, pady=20)
-        self.grid_frame.config(bg="black")
-
-        self.no_entry_image = resize_PhotoImage(r"images\noentry.png", variables.grid_image_width, variables.grid_image_height)
-        self.pixel_image = tk.PhotoImage(width=1, height=1)
-
+        self.grid_frame.grid(row=3, column=0, padx=(20,0), pady=20)
+        
         self.buttons_array = []
         for row_num in range(0, variables.rows_number):
             self.buttons_array.append([None]*variables.columns_number)
+            # Create the row label
+            row_label = tk.Label(self.grid_frame, text=variables.number_to_letter(row_num+1))
+            row_label.grid(row=row_num+1, column=0)
             for col_num in range(0, variables.columns_number):
+                # If it's the first row, add the column labels as well
+                if (row_num == 0):
+                    col_label = tk.Label(self.grid_frame, text=str(col_num+1))
+                    col_label.grid(row=0, column=col_num+1)
                 # Create a button widget (note: this uses the original tkinter button, not the new ttk button)
-                self.buttons_array[row_num][col_num] = tk.Button(self.grid_frame, image=self.pixel_image, height=variables.grid_image_height, width=variables.grid_image_width, text="X")
-                # Set the onclick handler
-                self.buttons_array[row_num][col_num]['command'] = lambda row=row_num, col=col_num: self.button_click_handler(row, col)
+                self.buttons_array[row_num][col_num] = GridButton(self.grid_frame)
+                # Set the onclick handler (pass row and column number (0-indexed) to the grid_click_handler function)
+                self.buttons_array[row_num][col_num]['command'] = lambda row=row_num, col=col_num: self.grid_click_handler(row, col)
                 # Position the button
-                self.buttons_array[row_num][col_num].grid(row=row_num, column=col_num)
+                self.buttons_array[row_num][col_num].grid(row=row_num+1, column=col_num+1)
+        # END GRID CONSTRUCTION
 
-        set_equal_columns(self.contents)
+        # Create the ship inventory
+        self.inventory_frame = tk.LabelFrame(self.contents, text="Your ships", width=50)
+        self.inventory_frame.grid(row=3, column=1, sticky="nw", padx=(30,10), pady=(35,0))
+        self.inventory_images_array = []
+        self.inventory_labels_array = []
+        ship_num = 0
+        for ship in variables.ships_available:
+            # Ship image
+            # 2D array: 1st layer is ship number, second layer is part number
+            # Draw each ship in the inventory panel
+            self.inventory_images_array.append([])
+            for part_num in range(0, ship.spaces):
+                if part_num == 0:
+                    image_ref = variables.photo_images["boat_e_g_l"]
+                elif part_num == ship.spaces-1:
+                    image_ref = variables.photo_images["boat_e_g_r"]
+                else:
+                    image_ref = variables.photo_images["boat_m_g_h"]
+                self.inventory_images_array[-1].append(tk.Label(self.inventory_frame, image=image_ref))   
+                self.inventory_images_array[-1][-1].grid(row=ship_num, column=part_num, padx=0, pady=5)
+                self.inventory_images_array[-1][-1].bind("<Button-1>", lambda e, s_index=ship_num, p_index=part_num: self.choose_ship(s_index, p_index))
+
+
+            # Ship label
+            self.inventory_labels_array.append(None)
+            self.inventory_labels_array[-1] = tk.Label(self.inventory_frame, text=ship.name+" ("+str(ship.spaces)+")")
+            self.inventory_labels_array[-1].grid(row=ship_num, column=5, padx=(0,5), pady=(2,0), sticky=W)
+            ship_num += 1
+
+        #set_equal_columns(self.contents)
+        self.contents.columnconfigure(2, weight=1)
 
     # Handler for any button presses from the grid
-    def button_click_handler(self, row, col):
-        print("Clicked: Row "+str(row+1)+" Column "+str(col+1)) 
-        self.buttons_array[row][col].config(image=self.no_entry_image, text="")
+    def grid_click_handler(self, row, col):
+        if (col==0):
+            boat_image = variables.photo_images["boat_e_g_l"]
+        elif (col==3):
+            boat_image = variables.photo_images["boat_e_g_r"]
+        else:
+            boat_image = variables.photo_images["boat_m_g_h"]
+        self.buttons_array[row][col].config(image=boat_image, text="")
+
+    # Changes the colour of a ship in the inventory panel
+    def change_inv_ship_colour(self, ship_index, colour_code):
+        part_counter = 0
+        for ship_image in self.inventory_images_array[ship_index]:
+            if (part_counter == 0):
+                image_ref = variables.photo_images["boat_e_"+colour_code+"_l"]
+            elif (part_counter == len(self.inventory_images_array[ship_index])-1):
+                image_ref = variables.photo_images["boat_e_"+colour_code+"_r"]
+            else:
+                image_ref = variables.photo_images["boat_m_"+colour_code+"_h"]
+            ship_image.config(image=image_ref)
+            part_counter += 1
+
+    # Selects a new ship to place
+    def choose_ship(self, ship_index, part_index):
+        # Set all ships to grey or green
+        for ship_num in range(0, len(variables.ships_available)):
+            self.change_inv_ship_colour(ship_num, "g")
+        # Set current to yellow
+        self.change_inv_ship_colour(ship_index, "y")
