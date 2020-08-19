@@ -17,8 +17,8 @@ def show_tutorial():
 class Game():
     # New game
     def __init__(self):
-        self.init_variables()
         self.init_ships_available()
+        self.init_variables()
         self.show_game_setup()
     
     # Displays the game setup window, shown at the start of the game
@@ -36,7 +36,9 @@ class Game():
     # Init the game variables, such as the grids
     def init_variables(self):
         variables.grid_player1 = create_game_grid(variables.rows_number, variables.columns_number)
+        variables.ships_player1 = create_ships_list()
         variables.grid_player2 = create_game_grid(variables.rows_number, variables.columns_number)
+        variables.ships_player2 = create_ships_list()
 
     # Populate variables.ships_available
     def init_ships_available(self):
@@ -59,6 +61,29 @@ class Ship():
 
 # Create an empty game grid and store in a 2D array
 def create_game_grid(rows, columns):
-    blank_column = [""] * columns
-    grid = [blank_column] * rows
+    blank_cell = {"s":"e", "i":None, "t":None}
+    """blank_column = [blank_cell.copy()] * columns
+    grid = [blank_column] * rows"""
+    grid = []
+    for row in range(0, rows):
+        grid.append([])
+        for col in range(0, columns):
+            cell = blank_cell.copy()
+            grid[-1].append(cell)
     return grid
+
+# Create an empty ship layout list to store ship positions and states for a player
+def create_ships_list():
+    output = []
+    for ship in variables.ships_available:
+        ship_dict = {}
+        ship_dict["name"] = ship.name
+        ship_dict["spaces"] = ship.spaces
+        # During ship placement: unplaced, placed, active, error
+        # During play: normal, hit, sunk
+        ship_dict["state"] = "unplaced"
+        # Coordinates are placed in an array, with the (0-indexed) row number first, then the column number after
+        # For example, location B5 would be recorded as [1, 4]
+        ship_dict["locations"] = [[0,0]]*ship.spaces
+        output.append(ship_dict)
+    return output

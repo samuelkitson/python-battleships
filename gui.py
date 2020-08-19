@@ -378,7 +378,7 @@ class ShipPlacement:
         # START GRID CONSTRUCTION
         self.grid_frame = tk.Frame(self.contents)
         self.grid_frame.grid(row=3, column=0, padx=(20,0), pady=20)
-        
+
         self.buttons_array = []
         for row_num in range(0, variables.rows_number):
             self.buttons_array.append([None]*variables.columns_number)
@@ -404,15 +404,15 @@ class ShipPlacement:
         self.inventory_images_array = []
         self.inventory_labels_array = []
         ship_num = 0
-        for ship in variables.ships_available:
+        for ship in variables.ships_player1:
             # Ship image
             # 2D array: 1st layer is ship number, second layer is part number
             # Draw each ship in the inventory panel
             self.inventory_images_array.append([])
-            for part_num in range(0, ship.spaces):
+            for part_num in range(0, ship["spaces"]):
                 if part_num == 0:
                     image_ref = variables.photo_images["boat_e_g_l"]
-                elif part_num == ship.spaces-1:
+                elif part_num == ship["spaces"]-1:
                     image_ref = variables.photo_images["boat_e_g_r"]
                 else:
                     image_ref = variables.photo_images["boat_m_g_h"]
@@ -423,22 +423,99 @@ class ShipPlacement:
 
             # Ship label
             self.inventory_labels_array.append(None)
-            self.inventory_labels_array[-1] = tk.Label(self.inventory_frame, text=ship.name+" ("+str(ship.spaces)+")")
+            self.inventory_labels_array[-1] = tk.Label(self.inventory_frame, text=ship["name"]+" ("+str(ship["spaces"])+")")
             self.inventory_labels_array[-1].grid(row=ship_num, column=5, padx=(0,5), pady=(2,0), sticky=W)
             ship_num += 1
+
+        # The index of the ship being placed, None if no ship is active
+        self.active_ship_index = None
 
         #set_equal_columns(self.contents)
         self.contents.columnconfigure(2, weight=1)
 
+    # Place a ship starting at a specific location on the grid
+    # Click location references the top-leftmost part of the ship, no matter if it's horizontal or vertical
+    # The details of the ship to be placed will be fetched from the self.active_ship variable
+    # Direction: "v" for vertical, "h" for horizontal
+    def place_ship(self, top_left_row, top_left_col, direction):
+        ship = variables.ships_player1[self.active_ship_index]
+        piece_row = top_left_row
+        piece_col = top_left_col
+
+        # Generate the list of positions for this ship's parts
+        # 0-indexed row number, then 0-indexed column number
+        locations_list = []
+        piece_row = top_left_row
+        piece_col = top_left_col
+        for part_num in range(0, ship["spaces"]):
+            if (piece_col+1 > variables.columns_number or piece_row+1 > variables.rows_number):
+                # If the location won't fit on the grid
+                messagebox.showwarning("Invalid position", "The selected ship will not fit in that location")
+                return
+            if (variables.grid_player1[piece_row][piece_col]["s"] != "e"):
+                # If the location already has a ship part there, show an error
+                messagebox.showwarning("Invalid position", "That location overlaps with another ship\nPlease choose a different position")
+                return
+            locations_list.append([])
+            locations_list[-1].extend([piece_row, piece_col])
+            if direction == "h":
+                piece_col += 1
+            else:
+                piece_row += 1
+
+        # Iterate through piece locations
+        # Add ship locations to player grid and ship location lists
+        part_num = 0
+        for loc in locations_list:
+            # Draw the new ship on the grid
+            if direction == "h":
+                # Horizontal
+                if part_num == 0:
+                    # Start of ship
+                    image_code = "boat_e_y_l"
+                elif part_num == ship["spaces"]-1:
+                    # End of ship
+                    image_code = "boat_e_y_r"
+                else:
+                    # Middle
+                    image_code = "boat_m_y_h"
+            else:
+                # Vertical
+                if part_num == 0:
+                    # Start of ship
+                    image_code = "boat_e_y_u"
+                elif part_num == ship["spaces"]-1:
+                    # End of ship
+                    image_code = "boat_e_y_d"
+                else:
+                    # Middle
+                    image_code = "boat_m_y_v"
+            self.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[image_code], text="")
+            # Update the player grid
+            variables.grid_player1[loc[0]][loc[1]]["s"] = "n"
+            variables.grid_player1[loc[0]][loc[1]]["i"] = self.active_ship_index
+            variables.grid_player1[loc[0]][loc[1]]["t"] = image_code
+            # Increment the part counter
+            part_num += 1
+
+        variables.ships_player1[self.active_ship_index]["locations"] = locations_list
+        print(variables.grid_player1)
+
+
     # Handler for any button presses from the grid
     def grid_click_handler(self, row, col):
-        if (col==0):
+        """if (col==0):
             boat_image = variables.photo_images["boat_e_g_l"]
         elif (col==3):
             boat_image = variables.photo_images["boat_e_g_r"]
         else:
             boat_image = variables.photo_images["boat_m_g_h"]
-        self.buttons_array[row][col].config(image=boat_image, text="")
+        self.buttons_array[row][col].config(image=boat_image, text="")"""
+        if row%2 == 0:
+            direction = "h"
+        else:
+            direction = "v"
+        self.place_ship(row, col, direction)
 
     # Changes the colour of a ship in the inventory panel
     def change_inv_ship_colour(self, ship_index, colour_code):
@@ -453,10 +530,32 @@ class ShipPlacement:
             ship_image.config(image=image_ref)
             part_counter += 1
 
+    # Colours the ships in the inventory panel accordingly
+    def set_inventory_colours(self):
+        # Set colours for all ships in the player's list
+        counter = 0
+        for ship in variables.ships_player1:
+            ship_state = ship["state"]
+            # Choose colour
+            if ship_state == "unplaced":
+                colour_id = "g"
+            elif ship_state == "placed":
+                colour_id = "e"
+            elif ship_state == "active":
+                colour_id = "y"
+            else:
+                colour_id = "g"
+            # Change colour
+            self.change_inv_ship_colour(counter, colour_id)
+            counter += 1
+
     # Selects a new ship to place
     def choose_ship(self, ship_index, part_index):
-        # Set all ships to grey or green
-        for ship_num in range(0, len(variables.ships_available)):
-            self.change_inv_ship_colour(ship_num, "g")
-        # Set current to yellow
-        self.change_inv_ship_colour(ship_index, "y")
+        self.active_ship_index = ship_index
+        # Set currently active ship to "placed" state
+        for ship in variables.ships_player1:
+            if ship["state"] == "active":
+                ship["state"] = "placed"
+        # Set new ship to "active" state
+        variables.ships_player1[ship_index]["state"] = "active"
+        self.set_inventory_colours()
