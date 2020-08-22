@@ -1,26 +1,26 @@
-Welcome to Battleships: Python Edition!
+~~Welcome to Battleships: Python Edition!~~
 Use the buttons below to navigate through the tutorial pages
+You can press the F1 key at any time to view the relevant help page
 
 By Samuel Kitson
 ###PAGEBREAK###
-Use the buttons below to navigate between the pages
+~~Game Setup~~
+Here you can choose the settings for your game. Use the buttons to choose between single player or multiplayer mode, and to choose the difficulty in a single player game. Changing the difficulty will change the skill level of the computer you play against.
+
 ###PAGEBREAK###
-This is a placeholder page
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-AWAITING CONTENT
-END OF FILE
+~~Ship Placement~~
+This is where you choose the placement of your ships so they're ready to take into battle!
+
+Your inventory on the right lists the different ships that you need to place.
+- You must place all 5
+- Ships can be horizontal or vertical
+- They cannot overlap, but they can touch
+- They must fit entirely on the grid
+
+To place a ship:
+- Click the ship you want to place from your inventory
+- It turns yellow to indicate which one is active
+- Use the button in the "tools" box to toggle between horizontal and vertical placement
+- Click the top/left square where your ship will go
+- If valid, your ship will be placed
+- Repeat until all your ships have been placed

@@ -128,7 +128,7 @@ class GridButton(tk.Button):
 #
 class Window(tk.Tk):
     #Construct the window
-    def __init__(self):
+    def __init__(self, show_tutorial_callback):
         #self.window = tk.Tk()
         super().__init__()
         self.title("Battleships")
@@ -140,6 +140,9 @@ class Window(tk.Tk):
         
         # Catch the window close event and show a confirmation dialog
         self.protocol("WM_DELETE_WINDOW", quit_game)
+
+        # Record the callbacks
+        self.show_tutorial_callback = show_tutorial_callback
 
         # Load and create images
         load_all_images()
@@ -153,11 +156,15 @@ class Window(tk.Tk):
         self.bind("<F10>", lambda event:self.exit_full_screen())
         self.attributes("-fullscreen", True)
 
-    # Disables key binding and exits full screen
+    # Disables F11 key binding and exits full screen
     def exit_full_screen(self):
         self.unbind("<F11>")
         self.unbind("<Escape>")
         self.attributes("-fullscreen", False)
+
+    # Shows the tutorial at a certain page when F11 is pressed
+    def bind_tutorial_page(self, page_num):
+        self.bind("<F1>", lambda event:self.show_tutorial_callback(page_num))
 
     # Destroys all child widgets within the contents Frame
     def clear_frame(self):
@@ -203,7 +210,7 @@ class PopupWindow(tk.Toplevel):
 #
 class Tutorial(PopupWindow):
     # Construct the GUI
-    def __init__(self):
+    def __init__(self, init_page=None):
         # Init the PopupWindow superclass
         super().__init__()
         
@@ -233,11 +240,27 @@ class Tutorial(PopupWindow):
         
         self.load_tutorial_file()
 
+        if (init_page != None):
+            self.to_page(init_page)
+
     # Loads the tutorial.txt into the self.tutorial_text array, split by page
     def load_tutorial_file(self):
         try:
             with open("tutorial.txt", 'r') as tutorial_file:
-                self.tutorial_pages = tutorial_file.read().split("###PAGEBREAK###")
+                raw_pages = tutorial_file.read().split("###PAGEBREAK###")
+                self.tutorial_pages = []
+                for page in raw_pages:
+                    new_page = {}
+                    if "~~" in page:
+                        # Title on this page
+                        split_page = page.split("~~")
+                        new_page["title"] = split_page[1]
+                        new_page["text"] = split_page[2]
+                    else:
+                        # No title
+                        new_page["title"] = None
+                        new_page["text"] = page
+                    self.tutorial_pages.append(new_page)
         except FileNotFoundError:
             self.tutorial_pages = ["Error: tutorial.txt file not found"]
         finally:
@@ -266,11 +289,19 @@ class Tutorial(PopupWindow):
         if (self.page_number < len(self.tutorial_pages) - 1):
             self.page_number += 1
             self.write_page()
+    def to_page(self, page_num):
+        if (page_num < len(self.tutorial_pages)) and (page_num >= 0):
+            self.page_number = page_num
+            self.write_page()
 
     # Prints the current page
     def write_page(self):
         self.clear_text()
-        self.write_text(self.tutorial_pages[self.page_number].strip())
+        page_content = self.tutorial_pages[self.page_number]
+        # Write title in bold, if applicable
+        if not page_content["title"] is None:
+            self.write_text(page_content["title"]+"\n", ("bold"))
+        self.write_text(page_content["text"].strip())
 
     # Closes the window
     def close(self):
@@ -293,6 +324,9 @@ class GameSetup:
         # Record callbacks
         self.show_tutorial_callback = show_tutorial_callback
         self.start_game_callback = start_game_callback
+
+        # Set up tutorial page
+        variables.window.bind_tutorial_page(1)
 
         # Create the GUI
         self.title = tk.Label(self.contents, text="Battleships", fg=variables.title_colour, font=variables.title_font)
@@ -320,14 +354,17 @@ class GameSetup:
         self.game_difficulty_select.config(width=8)
         self.game_difficulty_select.grid(row=1, column=1, sticky="w")
 
-        self.resize_button = ttk.Button(self.contents, text="Start game", command=self.start_game_callback)
-        self.resize_button.grid(row=3, column=0)
+        self.start_button = ttk.Button(self.contents, text="Start game", command=self.start_game_callback)
+        self.start_button.grid(row=3, column=0)
 
         self.tutorial_button = ttk.Button(self.contents, text="Tutorial", command=self.show_tutorial_callback)
         self.tutorial_button.grid(row=3, column=1)
 
         self.close_button = ttk.Button(self.contents, text="Quit", command=quit_game)
         self.close_button.grid(row=4, column=0)
+
+        self.help_message = tk.Label(self.contents, text="Need help? Press the F1 key at any point to view the help page", wraplength=350)
+        self.help_message.grid(row=5, column=0, columnspan=2, pady=(20,10))
 
         # Set the columns to equal width
         set_equal_columns(self.options_frame)
@@ -365,6 +402,9 @@ class ShipPlacement:
         # Record callbacks
         self.next_screen_callback = next_screen_callback
 
+        # Link tutorial page
+        variables.window.bind_tutorial_page(2)
+
         # Create the GUI
         self.title = tk.Label(self.contents, text="Ship Placement", fg=variables.title_colour, font=variables.title_font)
         self.title.grid(row=0, column=0, columnspan=3, pady=(10,0))
@@ -377,7 +417,7 @@ class ShipPlacement:
 
         # START GRID CONSTRUCTION
         self.grid_frame = tk.Frame(self.contents)
-        self.grid_frame.grid(row=3, column=0, padx=(20,0), pady=20)
+        self.grid_frame.grid(row=3, rowspan=2, column=0, padx=(20,0), pady=20)
 
         self.buttons_array = []
         for row_num in range(0, variables.rows_number):
@@ -418,20 +458,120 @@ class ShipPlacement:
                     image_ref = variables.photo_images["boat_m_g_h"]
                 self.inventory_images_array[-1].append(tk.Label(self.inventory_frame, image=image_ref))   
                 self.inventory_images_array[-1][-1].grid(row=ship_num, column=part_num, padx=0, pady=5)
-                self.inventory_images_array[-1][-1].bind("<Button-1>", lambda e, s_index=ship_num, p_index=part_num: self.choose_ship(s_index, p_index))
-
-
+                self.inventory_images_array[-1][-1].bind("<Button-1>", lambda e, s_index=ship_num, p_index=part_num: self.choose_ship(s_index, p_index)) #testing
             # Ship label
             self.inventory_labels_array.append(None)
             self.inventory_labels_array[-1] = tk.Label(self.inventory_frame, text=ship["name"]+" ("+str(ship["spaces"])+")")
             self.inventory_labels_array[-1].grid(row=ship_num, column=5, padx=(0,5), pady=(2,0), sticky=W)
             ship_num += 1
 
+        # Create the ship placement tools frame
+        # Ship direction buttons
+        self.tools_frame = tk.LabelFrame(self.contents, text="Tools", width=50)
+        self.tools_frame.grid(row=4, column=1, sticky="nw", padx=(30,10), pady=0)
+        self.direction_label1 = tk.Label(self.tools_frame, text="Next ship direction:")
+        self.direction_label1.grid(row=0, column=0, padx=10, pady=(5,0), sticky="w")
+        self.direction_label2 = tk.Label(self.tools_frame, text="Horizontal")
+        self.direction_label2.grid(row=1, column=0, padx=10, pady=(0,5), sticky="w")
+        self.rotate_button = ttk.Button(self.tools_frame, text="Toggle direction", command=self.change_direction)
+        self.rotate_button.config(width=18)
+        self.rotate_button.grid(row=2, column=0, padx=10, pady=(0, 10), sticky="w")
+        # Game flow buttons
+        self.start_game_button = ttk.Button(self.tools_frame, text="Reset grid", command=self.clear_grid)
+        self.start_game_button.config(width=15)
+        self.start_game_button.grid(row=0, column=1, padx=(30,10))
+        """self.tutorial_button = ttk.Button(self.tools_frame, text="Tutorial", command=self.show_tutorial_callback)
+        self.tutorial_button.config(width=15)
+        self.tutorial_button.grid(row=1, column=1, padx=(30,10), pady=(5, 0))"""
+        self.start_game_button = ttk.Button(self.tools_frame, text="Start game", command=self.next_screen_callback)
+        self.start_game_button.config(width=15, state=tk.DISABLED)
+        self.start_game_button.grid(row=1, column=1, padx=(30,10), pady=(5, 0))
+
         # The index of the ship being placed, None if no ship is active
         self.active_ship_index = None
 
+        # The direction of the next ship
+        self.ship_direction = "h"
+
         #set_equal_columns(self.contents)
         self.contents.columnconfigure(2, weight=1)
+
+    # Toggle the direction of the next ship (vertical or horizontal)
+    def change_direction(self):
+        if self.ship_direction == "h":
+            self.ship_direction = "v"
+            self.direction_label2.config(text="Vertical")
+        else:
+            self.ship_direction = "h"
+            self.direction_label2.config(text="Horizontal")
+
+    # Check if all ships have been placed and toggle the start game button accordingly
+    def check_grid_complete(self):
+        grid_complete = True
+        for ship in variables.ships_player1:
+            if ship["state"] != "placed" and ship["state"] != "review":
+                grid_complete = False
+                break
+        if grid_complete:
+            self.start_game_button.config(state=tk.NORMAL)
+        else:
+            self.start_game_button.config(state=tk.DISABLED)
+
+    # Remove all ships from the grid, with confirmation
+    def clear_grid(self):
+        # Confirm grid clear
+        confirm_answer = messagebox.askokcancel("Clear grid", "Are you sure you want to clear the entire grid? All your ships will be placed back into your inventory")
+        if not confirm_answer:
+            return False
+        # Reset player ships list
+        for ship in variables.ships_player1:
+            ship["state"] = "unplaced"
+            ship["locations"] = [[0,0]]*ship["spaces"]
+        # Reset player grid
+        row_num = 0
+        for row in variables.grid_player1:
+            col_num = 0
+            for cell in row:
+                # Reset location state
+                variables.grid_player1[row_num][col_num] = {"s":"e", "i":None, "t":None}
+                # Reset grid image
+                cell_button = self.buttons_array[row_num][col_num]
+                cell_button.config(image=cell_button.pixel_image, text="")
+                col_num += 1
+            row_num += 1
+        self.set_inventory_colours()
+        self.check_grid_complete()
+
+    # Turn all valid ships on the grid grey (standard colour)
+    def deselect_all_grid(self, *args):
+        # Any boat image, as long as it is not grey
+        check_pattern = re.compile("boat_[a-z]_[a-fh-z]_[a-z]")
+        row_num = 0
+        for row in variables.grid_player1:
+            col_num = 0
+            for cell in row:
+                # Check if that cell already has an image, and that it isn't grey
+                if cell["t"] != None and check_pattern.match(cell["t"]):
+                    # If found, reset to the grey colour
+                    cell["t"] = cell["t"][:7] + "g" + cell["t"][8:]
+                    self.buttons_array[row_num][col_num].config(image=variables.photo_images[cell["t"]], text="")
+                col_num += 1
+            row_num += 1
+
+    # Highlight a ship in yellow on the grid
+    def select_ship_grid(self, ship_index, *args):
+        self.deselect_all_grid()
+        # Get locations from player ships variable
+        ship_locs = variables.ships_player1[ship_index]["locations"]
+        for loc in ship_locs:
+            if loc == [0,0]:
+                # Ship not placed yet
+                return False
+            old_image = variables.grid_player1[loc[0]][loc[1]]["t"]
+            new_image = old_image[:7] + "y" + old_image[8:]
+            variables.grid_player1[loc[0]][loc[1]]["t"] = new_image
+            self.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[new_image], text="")
+        return True
 
     # Place a ship starting at a specific location on the grid
     # Click location references the top-leftmost part of the ship, no matter if it's horizontal or vertical
@@ -499,23 +639,16 @@ class ShipPlacement:
             part_num += 1
 
         variables.ships_player1[self.active_ship_index]["locations"] = locations_list
-        print(variables.grid_player1)
 
 
     # Handler for any button presses from the grid
     def grid_click_handler(self, row, col):
-        """if (col==0):
-            boat_image = variables.photo_images["boat_e_g_l"]
-        elif (col==3):
-            boat_image = variables.photo_images["boat_e_g_r"]
-        else:
-            boat_image = variables.photo_images["boat_m_g_h"]
-        self.buttons_array[row][col].config(image=boat_image, text="")"""
-        if row%2 == 0:
-            direction = "h"
-        else:
-            direction = "v"
-        self.place_ship(row, col, direction)
+        # Has ship already been placed? If so, disallow another placement
+        if variables.ships_player1[self.active_ship_index]["state"] == "review" or variables.ships_player1[self.active_ship_index]["state"] == "placed":
+            return
+        self.place_ship(row, col, self.ship_direction)
+        variables.ships_player1[self.active_ship_index]["state"] = "placed"
+        self.check_grid_complete()
 
     # Changes the colour of a ship in the inventory panel
     def change_inv_ship_colour(self, ship_index, colour_code):
@@ -541,7 +674,7 @@ class ShipPlacement:
                 colour_id = "g"
             elif ship_state == "placed":
                 colour_id = "e"
-            elif ship_state == "active":
+            elif ship_state == "active" or ship_state == "review":
                 colour_id = "y"
             else:
                 colour_id = "g"
@@ -552,10 +685,19 @@ class ShipPlacement:
     # Selects a new ship to place
     def choose_ship(self, ship_index, part_index):
         self.active_ship_index = ship_index
-        # Set currently active ship to "placed" state
+        # Sets ships under review to "placed" state
+        for ship in variables.ships_player1:
+            if ship["state"] == "review":
+                ship["state"] = "placed"
+        # Highlights the current location if it has already been placed
+        if self.select_ship_grid(ship_index):
+            variables.ships_player1[ship_index]["state"] = "review"
+            self.set_inventory_colours()
+            return
+        # Set currently active ships to the "unplaced" state
         for ship in variables.ships_player1:
             if ship["state"] == "active":
-                ship["state"] = "placed"
+                ship["state"] = "unplaced"
         # Set new ship to "active" state
         variables.ships_player1[ship_index]["state"] = "active"
         self.set_inventory_colours()

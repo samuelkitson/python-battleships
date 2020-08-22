@@ -17,7 +17,7 @@ import time
 # Called to start the game
 def start_program():
     # Create the base window that will host the game
-    variables.window = gui.Window()
+    variables.window = gui.Window(game.show_tutorial)
     variables.game = game.Game()
 
 if __name__ == "__main__":

@@ -7,8 +7,8 @@
 import variables, gui
 
 # Displays the tutorial popup window
-def show_tutorial():
-    variables.tutorial_window = gui.Tutorial()
+def show_tutorial(init_page=0):
+    variables.tutorial_window = gui.Tutorial(init_page)
 
 
 #
@@ -31,7 +31,7 @@ class Game():
     # Called from the start game button on the setup window
     def start_ship_placement(self):
         variables.window.clear_frame()
-        variables.ship_placement_window = gui.ShipPlacement(lambda: print("Ships placed"))
+        variables.ship_placement_window = gui.ShipPlacement(lambda:print("Ships placed"))
 
     # Init the game variables, such as the grids
     def init_variables(self):
@@ -79,7 +79,7 @@ def create_ships_list():
         ship_dict = {}
         ship_dict["name"] = ship.name
         ship_dict["spaces"] = ship.spaces
-        # During ship placement: unplaced, placed, active, error
+        # During ship placement: unplaced, placed, active, review (same as active, but after placement), error
         # During play: normal, hit, sunk
         ship_dict["state"] = "unplaced"
         # Coordinates are placed in an array, with the (0-indexed) row number first, then the column number after
