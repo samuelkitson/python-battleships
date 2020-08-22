@@ -125,6 +125,7 @@ class GridButton(tk.Button):
 # To use, create and place a GameGrid instance as if it were a normal Frame
 #
 class GameGrid(tk.Frame):
+    # Construct the grid within a frame
     def __init__(self, master, button_callback):
         # Init the tk.Frame superclass
         super().__init__(master)
@@ -148,6 +149,21 @@ class GameGrid(tk.Frame):
                 self.buttons_array[row_num][col_num]['command'] = lambda row=row_num, col=col_num: button_callback(row, col)
                 # Position the button
                 self.buttons_array[row_num][col_num].grid(row=row_num+1, column=col_num+1)
+
+    # Clear all ships from the grid
+    def clear(self, clear_grid_var=False):
+        # Iterate through 
+        row_num = 0
+        for row in variables.grid_player1:
+            col_num = 0
+            for cell in row:
+                # Reset location state
+                variables.grid_player1[row_num][col_num] = {"s":"e", "i":None, "t":None}
+                # Reset grid image
+                cell_button = self.buttons_array[row_num][col_num]
+                cell_button.config(image=cell_button.pixel_image, text="")
+                col_num += 1
+            row_num += 1
     
 
 #
@@ -467,8 +483,8 @@ class ShipPlacement:
         # END GRID CONSTRUCTION"""
 
         # START GRID CONSTRUCTION
-        self.grid_frame = GameGrid(self.contents, self.grid_click_handler)
-        self.grid_frame.grid(row=3, rowspan=2, column=0, padx=(20,0), pady=20)
+        self.placement_grid = GameGrid(self.contents, self.grid_click_handler)
+        self.placement_grid.grid(row=3, rowspan=2, column=0, padx=(20,0), pady=20)
 
         # END GRID CONSTRUCTION
 
@@ -561,7 +577,7 @@ class ShipPlacement:
         for ship in variables.ships_player1:
             ship["state"] = "unplaced"
             ship["locations"] = [[0,0]]*ship["spaces"]
-        # Reset player grid
+        """# Reset player grid
         row_num = 0
         for row in variables.grid_player1:
             col_num = 0
@@ -569,10 +585,12 @@ class ShipPlacement:
                 # Reset location state
                 variables.grid_player1[row_num][col_num] = {"s":"e", "i":None, "t":None}
                 # Reset grid image
-                cell_button = self.grid_frame.buttons_array[row_num][col_num]
+                cell_button = self.placement_grid.buttons_array[row_num][col_num]
                 cell_button.config(image=cell_button.pixel_image, text="")
                 col_num += 1
-            row_num += 1
+            row_num += 1"""
+        # Reset player grid and visual grid
+        self.placement_grid.clear(True)
         self.set_inventory_colours()
         self.check_grid_complete()
 
@@ -588,7 +606,7 @@ class ShipPlacement:
                 if cell["t"] != None and check_pattern.match(cell["t"]):
                     # If found, reset to the grey colour
                     cell["t"] = cell["t"][:7] + "g" + cell["t"][8:]
-                    self.grid_frame.buttons_array[row_num][col_num].config(image=variables.photo_images[cell["t"]], text="")
+                    self.placement_grid.buttons_array[row_num][col_num].config(image=variables.photo_images[cell["t"]], text="")
                 col_num += 1
             row_num += 1
 
@@ -604,7 +622,7 @@ class ShipPlacement:
             old_image = variables.grid_player1[loc[0]][loc[1]]["t"]
             new_image = old_image[:7] + "y" + old_image[8:]
             variables.grid_player1[loc[0]][loc[1]]["t"] = new_image
-            self.grid_frame.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[new_image], text="")
+            self.placement_grid.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[new_image], text="")
         return True
 
     # Place a ship starting at a specific location on the grid
@@ -625,11 +643,11 @@ class ShipPlacement:
             if (piece_col+1 > variables.columns_number or piece_row+1 > variables.rows_number):
                 # If the location won't fit on the grid
                 messagebox.showwarning("Invalid position", "The selected ship will not fit in that location")
-                return
+                return False
             if (variables.grid_player1[piece_row][piece_col]["s"] != "e"):
                 # If the location already has a ship part there, show an error
                 messagebox.showwarning("Invalid position", "That location overlaps with another ship\nPlease choose a different position")
-                return
+                return False
             locations_list.append([])
             locations_list[-1].extend([piece_row, piece_col])
             if direction == "h":
@@ -664,7 +682,7 @@ class ShipPlacement:
                 else:
                     # Middle
                     image_code = "boat_m_y_v"
-            self.grid_frame.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[image_code], text="")
+            self.placement_grid.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[image_code], text="")
             # Update the player grid
             variables.grid_player1[loc[0]][loc[1]]["s"] = "n"
             variables.grid_player1[loc[0]][loc[1]]["i"] = self.active_ship_index
@@ -673,6 +691,8 @@ class ShipPlacement:
             part_num += 1
 
         variables.ships_player1[self.active_ship_index]["locations"] = locations_list
+        # Successful ship placement, return True
+        return True
 
 
     # Handler for any button presses from the grid
@@ -684,7 +704,9 @@ class ShipPlacement:
         # Has ship already been placed? If so, disallow another placement
         if variables.ships_player1[self.active_ship_index]["state"] == "review" or variables.ships_player1[self.active_ship_index]["state"] == "placed":
             return
-        self.place_ship(row, col, self.ship_direction)
+        if not self.place_ship(row, col, self.ship_direction):
+            # If failed to place ship, return
+            return
         variables.ships_player1[self.active_ship_index]["state"] = "placed"
         self.check_grid_complete()
 
