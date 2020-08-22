@@ -35,10 +35,10 @@ class Game():
 
     # Init the game variables, such as the grids
     def init_variables(self):
-        variables.grid_player1 = create_game_grid(variables.rows_number, variables.columns_number)
-        variables.ships_player1 = create_ships_list()
-        variables.grid_player2 = create_game_grid(variables.rows_number, variables.columns_number)
-        variables.ships_player2 = create_ships_list()
+        variables.player_grids[0] = create_game_grid(variables.rows_number, variables.columns_number)
+        variables.player_ships[0] = create_ships_list()
+        variables.player_grids[1] = create_game_grid(variables.rows_number, variables.columns_number)
+        variables.player_ships[1] = create_ships_list()
 
     # Populate variables.ships_available
     def init_ships_available(self):

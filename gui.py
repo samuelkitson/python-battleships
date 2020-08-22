@@ -150,15 +150,32 @@ class GameGrid(tk.Frame):
                 # Position the button
                 self.buttons_array[row_num][col_num].grid(row=row_num+1, column=col_num+1)
 
-    # Clear all ships from the grid
-    def clear(self, clear_grid_var=False):
-        # Iterate through 
+    # Deselects all ships from the grid and turns all to grey
+    def deselect_all(self, player_num):
+        # Any boat image, as long as it is not grey
+        check_pattern = re.compile("boat_[a-z]_[a-fh-z]_[a-z]")
         row_num = 0
-        for row in variables.grid_player1:
+        for row in variables.player_grids[player_num]:
             col_num = 0
             for cell in row:
-                # Reset location state
-                variables.grid_player1[row_num][col_num] = {"s":"e", "i":None, "t":None}
+                # Check if that cell already has an image, and that it isn't grey
+                if cell["t"] != None and check_pattern.match(cell["t"]):
+                    # If found, reset to the grey colour
+                    cell["t"] = cell["t"][:7] + "g" + cell["t"][8:]
+                    self.buttons_array[row_num][col_num].config(image=variables.photo_images[cell["t"]], text="")
+                col_num += 1
+            row_num += 1
+
+    # Clear all ships from the grid
+    def clear(self, player_num, clear_grid_var=False):
+        # Iterate through 
+        row_num = 0
+        for row in variables.player_grids[player_num]:
+            col_num = 0
+            for cell in row:
+                # Reset location state in grid var, if required
+                if clear_grid_var:
+                    variables.player_grids[player_num][row_num][col_num] = {"s":"e", "i":None, "t":None}
                 # Reset grid image
                 cell_button = self.buttons_array[row_num][col_num]
                 cell_button.config(image=cell_button.pixel_image, text="")
@@ -459,34 +476,9 @@ class ShipPlacement:
         #self.close_button = ttk.Button(self.contents, text="Quit", command=quit_game)
         #self.close_button.grid(row=3, column=1, sticky="w")
 
-        """# START GRID CONSTRUCTION
-        self.grid_frame = tk.Frame(self.contents)
-        self.grid_frame.grid(row=3, rowspan=2, column=0, padx=(20,0), pady=20)
-
-        self.buttons_array = []
-        for row_num in range(0, variables.rows_number):
-            self.buttons_array.append([None]*variables.columns_number)
-            # Create the row label
-            row_label = tk.Label(self.grid_frame, text=variables.number_to_letter(row_num+1))
-            row_label.grid(row=row_num+1, column=0)
-            for col_num in range(0, variables.columns_number):
-                # If it's the first row, add the column labels as well
-                if (row_num == 0):
-                    col_label = tk.Label(self.grid_frame, text=str(col_num+1))
-                    col_label.grid(row=0, column=col_num+1)
-                # Create a button widget (note: this uses the original tkinter button, not the new ttk button)
-                self.buttons_array[row_num][col_num] = GridButton(self.grid_frame)
-                # Set the onclick handler (pass row and column number (0-indexed) to the grid_click_handler function)
-                self.buttons_array[row_num][col_num]['command'] = lambda row=row_num, col=col_num: self.grid_click_handler(row, col)
-                # Position the button
-                self.buttons_array[row_num][col_num].grid(row=row_num+1, column=col_num+1)
-        # END GRID CONSTRUCTION"""
-
-        # START GRID CONSTRUCTION
+        # Construct and place grid using GameGrid instance
         self.placement_grid = GameGrid(self.contents, self.grid_click_handler)
         self.placement_grid.grid(row=3, rowspan=2, column=0, padx=(20,0), pady=20)
-
-        # END GRID CONSTRUCTION
 
         # Create the ship inventory
         self.inventory_frame = tk.LabelFrame(self.contents, text="Your ships", width=50)
@@ -494,7 +486,7 @@ class ShipPlacement:
         self.inventory_images_array = []
         self.inventory_labels_array = []
         ship_num = 0
-        for ship in variables.ships_player1:
+        for ship in variables.player_ships[0]:
             # Ship image
             # 2D array: 1st layer is ship number, second layer is part number
             # Draw each ship in the inventory panel
@@ -558,7 +550,7 @@ class ShipPlacement:
     # Check if all ships have been placed and toggle the start game button accordingly
     def check_grid_complete(self):
         grid_complete = True
-        for ship in variables.ships_player1:
+        for ship in variables.player_ships[0]:
             if ship["state"] != "placed" and ship["state"] != "review":
                 grid_complete = False
                 break
@@ -574,54 +566,26 @@ class ShipPlacement:
         if not confirm_answer:
             return False
         # Reset player ships list
-        for ship in variables.ships_player1:
+        for ship in variables.player_ships[0]:
             ship["state"] = "unplaced"
             ship["locations"] = [[0,0]]*ship["spaces"]
-        """# Reset player grid
-        row_num = 0
-        for row in variables.grid_player1:
-            col_num = 0
-            for cell in row:
-                # Reset location state
-                variables.grid_player1[row_num][col_num] = {"s":"e", "i":None, "t":None}
-                # Reset grid image
-                cell_button = self.placement_grid.buttons_array[row_num][col_num]
-                cell_button.config(image=cell_button.pixel_image, text="")
-                col_num += 1
-            row_num += 1"""
         # Reset player grid and visual grid
-        self.placement_grid.clear(True)
+        self.placement_grid.clear(0, True)
         self.set_inventory_colours()
         self.check_grid_complete()
 
-    # Turn all valid ships on the grid grey (standard colour)
-    def deselect_all_grid(self, *args):
-        # Any boat image, as long as it is not grey
-        check_pattern = re.compile("boat_[a-z]_[a-fh-z]_[a-z]")
-        row_num = 0
-        for row in variables.grid_player1:
-            col_num = 0
-            for cell in row:
-                # Check if that cell already has an image, and that it isn't grey
-                if cell["t"] != None and check_pattern.match(cell["t"]):
-                    # If found, reset to the grey colour
-                    cell["t"] = cell["t"][:7] + "g" + cell["t"][8:]
-                    self.placement_grid.buttons_array[row_num][col_num].config(image=variables.photo_images[cell["t"]], text="")
-                col_num += 1
-            row_num += 1
-
     # Highlight a ship in yellow on the grid
     def select_ship_grid(self, ship_index, *args):
-        self.deselect_all_grid()
+        self.placement_grid.deselect_all(0)
         # Get locations from player ships variable
-        ship_locs = variables.ships_player1[ship_index]["locations"]
+        ship_locs = variables.player_ships[0][ship_index]["locations"]
         for loc in ship_locs:
             if loc == [0,0]:
                 # Ship not placed yet
                 return False
-            old_image = variables.grid_player1[loc[0]][loc[1]]["t"]
+            old_image = variables.player_grids[0][loc[0]][loc[1]]["t"]
             new_image = old_image[:7] + "y" + old_image[8:]
-            variables.grid_player1[loc[0]][loc[1]]["t"] = new_image
+            variables.player_grids[0][loc[0]][loc[1]]["t"] = new_image
             self.placement_grid.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[new_image], text="")
         return True
 
@@ -630,7 +594,7 @@ class ShipPlacement:
     # The details of the ship to be placed will be fetched from the self.active_ship variable
     # Direction: "v" for vertical, "h" for horizontal
     def place_ship(self, top_left_row, top_left_col, direction):
-        ship = variables.ships_player1[self.active_ship_index]
+        ship = variables.player_ships[0][self.active_ship_index]
         piece_row = top_left_row
         piece_col = top_left_col
 
@@ -644,7 +608,7 @@ class ShipPlacement:
                 # If the location won't fit on the grid
                 messagebox.showwarning("Invalid position", "The selected ship will not fit in that location")
                 return False
-            if (variables.grid_player1[piece_row][piece_col]["s"] != "e"):
+            if (variables.player_grids[0][piece_row][piece_col]["s"] != "e"):
                 # If the location already has a ship part there, show an error
                 messagebox.showwarning("Invalid position", "That location overlaps with another ship\nPlease choose a different position")
                 return False
@@ -684,13 +648,13 @@ class ShipPlacement:
                     image_code = "boat_m_y_v"
             self.placement_grid.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[image_code], text="")
             # Update the player grid
-            variables.grid_player1[loc[0]][loc[1]]["s"] = "n"
-            variables.grid_player1[loc[0]][loc[1]]["i"] = self.active_ship_index
-            variables.grid_player1[loc[0]][loc[1]]["t"] = image_code
+            variables.player_grids[0][loc[0]][loc[1]]["s"] = "n"
+            variables.player_grids[0][loc[0]][loc[1]]["i"] = self.active_ship_index
+            variables.player_grids[0][loc[0]][loc[1]]["t"] = image_code
             # Increment the part counter
             part_num += 1
 
-        variables.ships_player1[self.active_ship_index]["locations"] = locations_list
+        variables.player_ships[0][self.active_ship_index]["locations"] = locations_list
         # Successful ship placement, return True
         return True
 
@@ -702,12 +666,12 @@ class ShipPlacement:
             messagebox.showwarning("No ship selected", "Please select a ship to place in the grid\nTo view the help page for this section, close this alert then press the F1 key")
             return
         # Has ship already been placed? If so, disallow another placement
-        if variables.ships_player1[self.active_ship_index]["state"] == "review" or variables.ships_player1[self.active_ship_index]["state"] == "placed":
+        if variables.player_ships[0][self.active_ship_index]["state"] == "review" or variables.player_ships[0][self.active_ship_index]["state"] == "placed":
             return
         if not self.place_ship(row, col, self.ship_direction):
             # If failed to place ship, return
             return
-        variables.ships_player1[self.active_ship_index]["state"] = "placed"
+        variables.player_ships[0][self.active_ship_index]["state"] = "placed"
         self.check_grid_complete()
 
     # Changes the colour of a ship in the inventory panel
@@ -727,7 +691,7 @@ class ShipPlacement:
     def set_inventory_colours(self):
         # Set colours for all ships in the player's list
         counter = 0
-        for ship in variables.ships_player1:
+        for ship in variables.player_ships[0]:
             ship_state = ship["state"]
             # Choose colour
             if ship_state == "unplaced":
@@ -746,18 +710,18 @@ class ShipPlacement:
     def choose_ship(self, ship_index, part_index):
         self.active_ship_index = ship_index
         # Sets ships under review to "placed" state
-        for ship in variables.ships_player1:
+        for ship in variables.player_ships[0]:
             if ship["state"] == "review":
                 ship["state"] = "placed"
         # Highlights the current location if it has already been placed
         if self.select_ship_grid(ship_index):
-            variables.ships_player1[ship_index]["state"] = "review"
+            variables.player_ships[0][ship_index]["state"] = "review"
             self.set_inventory_colours()
             return
         # Set currently active ships to the "unplaced" state
-        for ship in variables.ships_player1:
+        for ship in variables.player_ships[0]:
             if ship["state"] == "active":
                 ship["state"] = "unplaced"
         # Set new ship to "active" state
-        variables.ships_player1[ship_index]["state"] = "active"
+        variables.player_ships[0][ship_index]["state"] = "active"
         self.set_inventory_colours()

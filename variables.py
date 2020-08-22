@@ -48,10 +48,12 @@ game = None
 # i (ship index): 0-length of ships list, or None
 # t (type, the image code): eg, "boat_e_y_u", or None
 
-grid_player1 = [] # Grid belonging to player 1
+player_grids = [[],[]] # Grids belonging to players 1 and 2 respectively
+player_ships = [[],[]] # Info about ships belonging to players 1 and 2 respectively
+"""grid_player1 = [] # Grid belonging to player 1
 grid_player2 = [] # Grid belonging to player 2, usually the computer
 ships_player1 = [] # Ships belonging to player 1
-ships_player2 = [] # Ships belonging to player 2, usually the computer
+ships_player2 = [] # Ships belonging to player 2, usually the computer"""
 difficulty_levels = ("Easy", "Medium", "Hard")
 game_difficulty =  None
 ships_available = []
