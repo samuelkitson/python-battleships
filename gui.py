@@ -120,6 +120,34 @@ class GridButton(tk.Button):
         # Configure the button using the tk.Button methods
         self.config(image=self.pixel_image, height=variables.grid_image_height, width=variables.grid_image_width, relief="ridge", bg="white")
 
+#
+# A grid of GridButtons (extending the tk.Frame class), with settings defined in the variables module and callbacks passed upon init
+# To use, create and place a GameGrid instance as if it were a normal Frame
+#
+class GameGrid(tk.Frame):
+    def __init__(self, master, button_callback):
+        # Init the tk.Frame superclass
+        super().__init__(master)
+        # Create the button layout
+        self.buttons_array = []
+        # Dimensions are taken from variables.rows/columns_number
+        for row_num in range(0, variables.rows_number):
+            self.buttons_array.append([None]*variables.columns_number)
+            # Create the row label - this is a letter
+            row_label = tk.Label(self, text=variables.number_to_letter(row_num+1))
+            row_label.grid(row=row_num+1, column=0)
+            for col_num in range(0, variables.columns_number):
+                # If it's the first row, add the column labels as well - this is a number
+                if (row_num == 0):
+                    col_label = tk.Label(self, text=str(col_num+1))
+                    col_label.grid(row=0, column=col_num+1)
+                # Create a button widget (note: this uses the original tkinter button, not the new ttk button)
+                self.buttons_array[row_num][col_num] = GridButton(self)
+                # Set the onclick handler (pass row and column number (0-indexed) to the grid_click_handler function)
+                #self.buttons_array[row_num][col_num]['command'] = lambda row=row_num, col=col_num: self.grid_click_handler(row, col)
+                self.buttons_array[row_num][col_num]['command'] = lambda row=row_num, col=col_num: button_callback(row, col)
+                # Position the button
+                self.buttons_array[row_num][col_num].grid(row=row_num+1, column=col_num+1)
     
 
 #
@@ -415,7 +443,7 @@ class ShipPlacement:
         #self.close_button = ttk.Button(self.contents, text="Quit", command=quit_game)
         #self.close_button.grid(row=3, column=1, sticky="w")
 
-        # START GRID CONSTRUCTION
+        """# START GRID CONSTRUCTION
         self.grid_frame = tk.Frame(self.contents)
         self.grid_frame.grid(row=3, rowspan=2, column=0, padx=(20,0), pady=20)
 
@@ -436,6 +464,12 @@ class ShipPlacement:
                 self.buttons_array[row_num][col_num]['command'] = lambda row=row_num, col=col_num: self.grid_click_handler(row, col)
                 # Position the button
                 self.buttons_array[row_num][col_num].grid(row=row_num+1, column=col_num+1)
+        # END GRID CONSTRUCTION"""
+
+        # START GRID CONSTRUCTION
+        self.grid_frame = GameGrid(self.contents, self.grid_click_handler)
+        self.grid_frame.grid(row=3, rowspan=2, column=0, padx=(20,0), pady=20)
+
         # END GRID CONSTRUCTION
 
         # Create the ship inventory
@@ -535,7 +569,7 @@ class ShipPlacement:
                 # Reset location state
                 variables.grid_player1[row_num][col_num] = {"s":"e", "i":None, "t":None}
                 # Reset grid image
-                cell_button = self.buttons_array[row_num][col_num]
+                cell_button = self.grid_frame.buttons_array[row_num][col_num]
                 cell_button.config(image=cell_button.pixel_image, text="")
                 col_num += 1
             row_num += 1
@@ -554,7 +588,7 @@ class ShipPlacement:
                 if cell["t"] != None and check_pattern.match(cell["t"]):
                     # If found, reset to the grey colour
                     cell["t"] = cell["t"][:7] + "g" + cell["t"][8:]
-                    self.buttons_array[row_num][col_num].config(image=variables.photo_images[cell["t"]], text="")
+                    self.grid_frame.buttons_array[row_num][col_num].config(image=variables.photo_images[cell["t"]], text="")
                 col_num += 1
             row_num += 1
 
@@ -570,7 +604,7 @@ class ShipPlacement:
             old_image = variables.grid_player1[loc[0]][loc[1]]["t"]
             new_image = old_image[:7] + "y" + old_image[8:]
             variables.grid_player1[loc[0]][loc[1]]["t"] = new_image
-            self.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[new_image], text="")
+            self.grid_frame.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[new_image], text="")
         return True
 
     # Place a ship starting at a specific location on the grid
@@ -630,7 +664,7 @@ class ShipPlacement:
                 else:
                     # Middle
                     image_code = "boat_m_y_v"
-            self.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[image_code], text="")
+            self.grid_frame.buttons_array[loc[0]][loc[1]].config(image=variables.photo_images[image_code], text="")
             # Update the player grid
             variables.grid_player1[loc[0]][loc[1]]["s"] = "n"
             variables.grid_player1[loc[0]][loc[1]]["i"] = self.active_ship_index
@@ -643,6 +677,10 @@ class ShipPlacement:
 
     # Handler for any button presses from the grid
     def grid_click_handler(self, row, col):
+        # Check that a ship has been selected
+        if self.active_ship_index is None:
+            messagebox.showwarning("No ship selected", "Please select a ship to place in the grid\nTo view the help page for this section, close this alert then press the F1 key")
+            return
         # Has ship already been placed? If so, disallow another placement
         if variables.ships_player1[self.active_ship_index]["state"] == "review" or variables.ships_player1[self.active_ship_index]["state"] == "placed":
             return
