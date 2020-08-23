@@ -448,7 +448,7 @@ class GameSetup:
 
 
 #
-# The ShipPlacement class allows the player(s) to place their ships
+# The ShipPlacement class allows the player(s) to place their ships using the GameGrid class
 #
 class ShipPlacement:
     # Construct the GUI
@@ -658,7 +658,6 @@ class ShipPlacement:
         # Successful ship placement, return True
         return True
 
-
     # Handler for any button presses from the grid
     def grid_click_handler(self, row, col):
         # Check that a ship has been selected
@@ -725,3 +724,41 @@ class ShipPlacement:
         # Set new ship to "active" state
         variables.player_ships[0][ship_index]["state"] = "active"
         self.set_inventory_colours()
+
+
+#
+# The GameView window is the main game window, allowing players to see their own ships and attack their opponent's
+#
+class GameView:
+    # Construct the GUI
+    def __init__(self, next_screen_callback):
+        # Set up the Frame instance for this window
+        self.contents = tk.Frame(variables.window.contents)
+        self.contents.pack(fill=tk.BOTH, expand=1)
+        variables.window.geometry("1000x600")
+        variables.window.full_screen()
+        variables.window.resizable(True, True) # TEMPORARY
+
+        # Record callbacks
+        self.next_screen_callback = next_screen_callback
+
+        # Link tutorial page
+        variables.window.bind_tutorial_page(3)
+
+        # Create the GUI
+        self.title = tk.Label(self.contents, text="Battleships", fg=variables.title_colour, font=variables.title_font)
+        self.title.grid(row=0, column=0, columnspan=3, pady=(10,0))
+
+        # Construct and place the grids using GameGrid instance
+        self.attack_grid = GameGrid(self.contents, self.attack_grid_click)
+        self.attack_grid.grid(row=1, column=0, padx=(20,0), pady=20)
+        self.own_grid = GameGrid(self.contents, self.own_grid_click)
+        self.own_grid.grid(row=1, column=1, padx=(20,0), pady=20)
+
+    # Handle a click on the attacking grid
+    def attack_grid_click(self, row_num, col_num):
+        print("Attack grid", row_num, col_num)
+
+    # Handle a click on the player's own grid
+    def own_grid_click(self, row_num, col_num):
+        print("Own grid", row_num, col_num)

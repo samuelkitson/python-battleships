@@ -36,6 +36,7 @@ window = None
 tutorial_window = None
 game_setup_window = None
 ship_placement_window = None
+game_view_window = None
 game = None
 
 # Game variables

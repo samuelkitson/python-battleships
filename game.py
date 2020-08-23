@@ -31,7 +31,13 @@ class Game():
     # Called from the start game button on the setup window
     def start_ship_placement(self):
         variables.window.clear_frame()
-        variables.ship_placement_window = gui.ShipPlacement(lambda:print("Ships placed"))
+        variables.ship_placement_window = gui.ShipPlacement(self.start_game_view)
+
+    # After the ships have been placed, start the game and show the GameView screen
+    # Called from the start game button on the ship placement screen
+    def start_game_view(self):
+        variables.window.clear_frame()
+        variables.game_view_window = gui.GameView(lambda:print("Game finished"))
 
     # Init the game variables, such as the grids
     def init_variables(self):

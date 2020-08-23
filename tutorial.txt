@@ -24,3 +24,7 @@ To place a ship:
 - Click the top/left square where your ship will go
 - If valid, your ship will be placed
 - Repeat until all your ships have been placed
+
+###PAGEBREAK###
+~~Main Game~~
+You're now ready to play!
