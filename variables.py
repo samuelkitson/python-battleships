@@ -15,7 +15,8 @@ images_to_load = [
   "images/boat_middle_yellow.png",
   "images/boat_end_yellow.png",
   "images/boat_middle_green.png",
-  "images/boat_end_green.png"
+  "images/boat_end_green.png",
+  "images/noentry.png"
 ]
 loaded_images = {}
 # Naming convention: eg "boat_e_g_u" meaning boat end part, grey, pointing up
